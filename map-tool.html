@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Map Builder</title>
+
+<style>
+body{
+margin:0;
+background:#e6e6e6;
+font-family:Arial, sans-serif;
+display:flex;
+justify-content:center;
+}
+#container{
+width:100%;
+max-width:900px;
+padding:10px;
+display:flex;
+flex-direction:column;
+gap:10px;
+}
+canvas{
+background:#f2f2f2;
+border:2px solid black;
+cursor:crosshair;
+}
+button, select, input{
+padding:6px;
+font-size:14px;
+}
+#controls{
+display:flex;
+flex-wrap:wrap;
+gap:6px;
+}
+</style>
+</head>
+
+<body>
+<div id="container">
+
+<h2>Online Map Builder</h2>
+
+<div id="controls">
+<button id="drawBtn">Draw Line</button>
+<button id="deleteBtn">Delete Last</button>
+<button id="saveBtn">Save</button>
+<button id="loadBtn">Load</button>
+
+<select id="lineType">
+<option value="solid">Solid</option>
+<option value="dotted">Dotted</option>
+<option value="rail">Railroad</option>
+</select>
+
+<input type="color" id="colorPicker" value="#000000">
+<input type="number" id="widthPicker" value="3" min="1" max="10">
+</div>
+
+<canvas id="map" width="800" height="500"></canvas>
+
+<p><b>Scale:</b> 12 inches = 12 miles (1 inch = 1 mile)</p>
+
+</div>
+
+<script>
+const canvas = document.getElementById("map");
+const ctx = canvas.getContext("2d");
+
+let lines = [];
+let drawing = false;
+let start = null;
+
+function redraw(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+lines.forEach(l=>{
+ctx.strokeStyle = l.color;
+ctx.lineWidth = l.width;
+
+if(l.type==="dotted"){
+ctx.setLineDash([10,10]);
+}else{
+ctx.setLineDash([]);
+}
+
+ctx.beginPath();
+ctx.moveTo(l.x1,l.y1);
+ctx.lineTo(l.x2,l.y2);
+ctx.stroke();
+
+if(l.type==="rail"){
+ctx.setLineDash([]);
+for(let i=0;i<1;i+=0.05){
+const x = l.x1+(l.x2-l.x1)*i;
+const y = l.y1+(l.y2-l.y1)*i;
+ctx.beginPath();
+ctx.moveTo(x-5,y-5);
+ctx.lineTo(x+5,y+5);
+ctx.stroke();
+}
+}
+});
+}
+
+canvas.addEventListener("mousedown",e=>{
+drawing=true;
+start={x:e.offsetX,y:e.offsetY};
+});
+
+canvas.addEventListener("mousemove",e=>{
+if(!drawing) return;
+redraw();
+ctx.strokeStyle=colorPicker.value;
+ctx.lineWidth=widthPicker.value;
+ctx.beginPath();
+ctx.moveTo(start.x,start.y);
+ctx.lineTo(e.offsetX,e.offsetY);
+ctx.stroke();
+});
+
+canvas.addEventListener("mouseup",e=>{
+drawing=false;
+lines.push({
+x1:start.x,
+y1:start.y,
+x2:e.offsetX,
+y2:e.offsetY,
+color:colorPicker.value,
+width:widthPicker.value,
+type:lineType.value
+});
+redraw();
+
+const dx = e.offsetX-start.x;
+const dy = e.offsetY-start.y;
+const pixels = Math.sqrt(dx*dx+dy*dy);
+const inches = pixels/96;
+alert("Distance: "+inches.toFixed(2)+" miles");
+});
+
+deleteBtn.onclick=()=>{
+lines.pop();
+redraw();
+};
+
+saveBtn.onclick=()=>{
+localStorage.setItem("mapSave",JSON.stringify(lines));
+alert("Saved!");
+};
+
+loadBtn.onclick=()=>{
+const data=localStorage.getItem("mapSave");
+if(data){
+lines=JSON.parse(data);
+redraw();
+}
+};
+</script>
+
+</body>
+</html>
